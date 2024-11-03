@@ -36,7 +36,7 @@ const QuestionsList = ({ questionsData, handleFormFinalSubmit }) => {
         <div className="max-w-3xl mx-auto p-4">
             {currentCategoryIndex < categories.length ? (
                 <div>
-                    <h2 className="text-2xl font-bold mb-4">
+                    <h2 className="text-2xl font-bold mb-4 text-blue-900">
                         Intrebari despre {categories[currentCategoryIndex]}
                     </h2>
                     {questionsData[categories[currentCategoryIndex]].map((question) => (
