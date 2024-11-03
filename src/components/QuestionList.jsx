@@ -37,7 +37,7 @@ const QuestionsList = ({ questionsData, handleFormFinalSubmit }) => {
             {currentCategoryIndex < categories.length ? (
                 <div>
                     <h2 className="text-2xl font-bold mb-4 text-blue-900">
-                        Intrebari despre {categories[currentCategoryIndex]}
+                      Întrebări despre {categories[currentCategoryIndex]}
                     </h2>
                     {questionsData[categories[currentCategoryIndex]].map((question) => (
                         <MultipleChoiceQuestion
@@ -56,7 +56,7 @@ const QuestionsList = ({ questionsData, handleFormFinalSubmit }) => {
                                     !isAllAnswered() ? 'opacity-50 cursor-not-allowed' : ''
                                 }`}
                             >
-                                Next Questions
+                                Următoarele întrebări
                             </button>
                         }
                         {currentCategoryIndex === categories.length - 1 && (
@@ -74,7 +74,7 @@ const QuestionsList = ({ questionsData, handleFormFinalSubmit }) => {
                 </div>
             ) : (
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-4">Thank you for completing the quiz!</h2>
+                    <h2 className="text-2xl font-bold mb-4">Mulțumim că ați completat!</h2>
                     <button onClick={() => setCurrentCategoryIndex(0)} className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200">
                         Restart Quiz
                     </button>
