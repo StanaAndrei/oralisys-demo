@@ -9,7 +9,7 @@ export const questionsData = {
             ]
         },
         {
-            id: 'q1',
+            id: 'q2',
             text: 'Consumați medicamente prenatale ?',
             options: [
                 { id: 'c2lb3', label: 'Da' },
