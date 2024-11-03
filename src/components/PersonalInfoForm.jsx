@@ -58,7 +58,7 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
 
     return (
         <div className="max-w-lg mx-auto p-4">
-            <h2 className="text-2xl font-bold mb-8 text-blue-900">Formular pentru informații personale</h2>
+            <h2 className="text-2xl font-bold mb-8 text-gray-700">Formular pentru informații personale</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
