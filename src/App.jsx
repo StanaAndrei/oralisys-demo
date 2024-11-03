@@ -1,239 +1,177 @@
-// src/App.js
-import { useState, useRef } from 'react';
-import axios from 'axios';
-import Webcam from 'react-webcam';
-import './App.css'; // Optional: for styling
+import { useState } from 'react';
+import { createWorker } from 'tesseract.js';
+import './App.css';
 
-const App = () => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [ocrResult, setOcrResult] = useState('');
-  const [error, setError] = useState('');
+function App() {
+  const [extractedText, setExtractedText] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedInfo, setExtractedInfo] = useState(null);
-  const webcamRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  const OCR_SPACE_API_KEY = 'OCR_SPACE_API_KEY'; // Replace with your OCR Space API key
-
-  // Handle file selection with validation
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-
-    if (file && validTypes.includes(file.type)) {
-      setSelectedFile(file);
-      setOcrResult('');
-      setError('');
-      setExtractedInfo(null);
-    } else {
-      setError('Unsupported file type. Please upload a JPEG or PNG image.');
-      setSelectedFile(null);
-    }
-  };
-
-  // Capture image from webcam
-  const capture = () => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (imageSrc) {
-      // Convert base64 to File
-      const byteString = atob(imageSrc.split(',')[1]);
-      const mimeString = imageSrc.split(',')[0].split(':')[1].split(';')[0];
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-      }
-      const blob = new Blob([ab], { type: mimeString });
-      const file = new File([blob], 'captured_image.png', { type: mimeString });
-      setSelectedFile(file);
-      setOcrResult('');
-      setError('');
-      setExtractedInfo(null);
-    }
-  };
-
-  // Handle form submission for OCR
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!selectedFile) {
-      setError('Please select or capture an image first!');
-      return;
-    }
-
-    setIsProcessing(true);
-    setOcrResult('');
-    setError('');
-    setExtractedInfo(null);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('language', 'ron'); // Correct language code for Romanian
-    formData.append('apikey', OCR_SPACE_API_KEY);
-    formData.append('isOverlayRequired', 'false');
-
-    try {
-      const response = await axios.post('https://api.ocr.space/parse/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data.IsErroredOnProcessing) {
-        const apiError = response.data.ErrorMessage
-          ? response.data.ErrorMessage.join(' ')
-          : 'An unknown error occurred during OCR processing.';
-        setError(apiError);
-      } else {
-        const parsedText = response.data.ParsedResults[0].ParsedText;
-        setOcrResult(parsedText);
-        extractInfo(parsedText); // Extract specific fields
-      }
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred while processing the image.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Function to extract specific information from OCR result
-  const extractInfo = (text) => {
-    // Example extraction using regular expressions
-    // Adjust regex patterns based on actual OCR output format
-
-    // Extract Name
-    const nameMatch = text.match(/Nume\s*:\s*(.+)/i);
-    const name = nameMatch ? nameMatch[1].trim() : 'Not Found';
-
-    // Extract ID Number (CNP)
-    const cnpMatch = text.match(/CNP\s*:\s*(\d{13})/i);
-    const idNumber = cnpMatch ? cnpMatch[1].trim() : 'Not Found';
-
-    // Extract Date of Birth
-    const dobMatch = text.match(/Data\s*nașterii\s*:\s*(\d{2}[./-]\d{2}[./-]\d{4})/i);
-    const dateOfBirth = dobMatch ? dobMatch[1].trim() : 'Not Found';
-
-    setExtractedInfo({
-      name,
-      idNumber,
-      dateOfBirth,
+  const preprocessImage = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          ctx.filter = 'contrast(1.2) brightness(1.1)';
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 1.0));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     });
   };
 
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setSelectedImage(URL.createObjectURL(file));
+    setIsProcessing(true);
+    
+    try {
+      const processedImage = await preprocessImage(file);
+      const worker = await createWorker();
+      
+      await worker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./- ',
+        //preserve_interword_spaces: '1',
+        //tessedit_pageseg_mode: '6',
+      });
+
+      const { data: { text } } = await worker.recognize(processedImage);
+      const parsedData = parseRomanianID(text);
+      setExtractedText(parsedData);
+      
+      await worker.terminate();
+    } catch (error) {
+      console.error('Error processing image:', error);
+      setExtractedText({ error: 'Eroare la procesarea imaginii. Încercați din nou.' });
+    }
+    setIsProcessing(false);
+  };
+
+  const parseRomanianID = (text) => {
+    const lines = text.split('\n');
+    const parsed = {
+      cnp: '',
+      seria: '',
+      numar: '',
+      nume: '',
+      prenume: '',
+      cetatenie: '',
+      locNastere: '',
+      domiciliu: '',
+      emitent: '',
+      dataEmiterii: '',
+      valabilitate: ''
+    };
+
+    console.log('====================================');
+    console.log(text);
+    console.log('====================================');
+    text = text.toUpperCase();
+    lines.forEach(line => {
+      // CNP extraction
+      const cnpMatch = line.match(/\b\d{13}\b/);
+      if (cnpMatch) parsed.cnp = cnpMatch[0];
+
+      // Seria and Number
+      const seriaMatch = line.match(/SERIA\s*([A-Z]{2})/i);
+      if (seriaMatch) parsed.seria = seriaMatch[1];
+      
+      const numarMatch = line.match(/NR\.\s*(\d{6})/i);
+      if (numarMatch) parsed.numar = numarMatch[1];
+
+      // Name and First name
+      if (line.includes('NUME') || line.includes('NOM') || line.includes('LAST NAME')) {
+        const nextLine = lines[lines.indexOf(line) + 1];
+        if (nextLine) parsed.nume = nextLine.trim();
+      }
+      
+      if (line.includes('PRENUME') || line.includes('PRENOM') || line.includes('FIRST NAME')) {
+        const nextLine = lines[lines.indexOf(line) + 1];
+        if (nextLine) parsed.prenume = nextLine.trim();
+      }
+
+      // Address
+      if (line.includes('DOMICILIU') || line.includes('ADRESSE') || line.includes('ADDRESS')) {
+        const nextLine = lines[lines.indexOf(line) + 1];
+        if (nextLine) parsed.domiciliu = nextLine.trim();
+      }
+
+      // Validity date
+      const dateMatch = line.match(/\d{2}\.\d{2}\.\d{2}.*\d{2}\.\d{2}\.\d{4}/);
+      if (dateMatch) parsed.valabilitate = dateMatch[0];
+    });
+
+    // MRZ backup check
+    const mrzLine = lines.find(line => line.includes('<<'));
+    if (mrzLine && (!parsed.nume || !parsed.prenume)) {
+      const mrzParts = mrzLine.split('<<');
+      if (mrzParts.length >= 2) {
+        parsed.nume = mrzParts[0].replace(/[^A-Z]/g, '');
+        parsed.prenume = mrzParts[1].split('<')[0];
+      }
+    }
+
+    return parsed;
+  };
+
   return (
-    <div className="App" style={styles.container}>
-      <h1>Romanian ID Card Scanner</h1>
-
-      <div style={styles.section}>
-        <h2>Upload Image</h2>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
-      </div>
-
-      <div style={styles.section}>
-        <h2>Or Capture via Webcam</h2>
-        <Webcam
-          audio={false}
-          ref={webcamRef}
-          screenshotFormat="image/png"
-          width={350}
-          videoConstraints={{
-            width: 350,
-            height: 200,
-            facingMode: 'environment',
-          }}
+    <div className="App">
+      <h1>Scanner Buletin</h1>
+      
+      <div className="upload-container">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          disabled={isProcessing}
+          className="file-input"
         />
-        <br />
-        <button onClick={capture} style={styles.button}>
-          Capture Photo
-        </button>
-      </div>
-
-      <div style={styles.section}>
-        <h2>Selected Image:</h2>
-        {selectedFile ? (
-          <img
-            src={selectedFile instanceof File ? URL.createObjectURL(selectedFile) : selectedFile}
-            alt="Selected"
-            style={styles.imagePreview}
-          />
-        ) : (
-          <p>No image selected or captured.</p>
+        
+        {selectedImage && (
+          <div className="preview-container">
+            <img 
+              src={selectedImage} 
+              alt="Preview" 
+              style={{ maxWidth: '100%', maxHeight: '300px' }}
+            />
+          </div>
         )}
       </div>
 
-      <div style={styles.section}>
-        <button onClick={handleSubmit} style={styles.submitButton} disabled={isProcessing}>
-          {isProcessing ? 'Processing...' : 'Scan ID'}
-        </button>
-      </div>
+      {isProcessing && <p>Se procesează...</p>}
 
-      {error && (
-        <div style={styles.section}>
-          <h3 style={{ color: 'red' }}>Error:</h3>
-          <p>{error}</p>
-        </div>
-      )}
-
-      {ocrResult && (
-        <div style={styles.section}>
-          <h3>OCR Extracted Text:</h3>
-          <pre style={styles.pre}>{ocrResult}</pre>
-        </div>
-      )}
-
-      {extractedInfo && (
-        <div style={styles.section}>
-          <h3>Extracted Information:</h3>
-          <p>
-            <strong>Name:</strong> {extractedInfo.name}
-          </p>
-          <p>
-            <strong>ID Number:</strong> {extractedInfo.idNumber}
-          </p>
-          <p>
-            <strong>Date of Birth:</strong> {extractedInfo.dateOfBirth}
-          </p>
+      {extractedText && (
+        <div className="results">
+          <h2>Informații Extrase:</h2>
+          <div className="extracted-data">
+            {extractedText.error ? (
+              <p className="error">{extractedText.error}</p>
+            ) : (
+              <>
+                <p><strong>CNP:</strong> {extractedText.cnp}</p>
+                <p><strong>Seria:</strong> {extractedText.seria}</p>
+                <p><strong>Număr:</strong> {extractedText.numar}</p>
+                <p><strong>Nume:</strong> {extractedText.nume}</p>
+                <p><strong>Prenume:</strong> {extractedText.prenume}</p>
+                <p><strong>Domiciliu:</strong> {extractedText.domiciliu}</p>
+                <p><strong>Valabilitate:</strong> {extractedText.valabilitate}</p>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
-};
-
-// Simple inline styles for basic layout
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '20px',
-    fontFamily: 'Arial, sans-serif',
-  },
-  section: {
-    margin: '20px 0',
-  },
-  button: {
-    padding: '10px 20px',
-    fontSize: '16px',
-    cursor: 'pointer',
-  },
-  submitButton: {
-    padding: '10px 30px',
-    fontSize: '18px',
-    cursor: 'pointer',
-  },
-  imagePreview: {
-    width: '350px',
-    height: 'auto',
-    border: '1px solid #ccc',
-    marginTop: '10px',
-  },
-  pre: {
-    textAlign: 'left',
-    maxHeight: '300px',
-    overflowY: 'scroll',
-    backgroundColor: '#f4f4f4',
-    padding: '10px',
-    borderRadius: '5px',
-  },
-};
+}
 
 export default App;
