@@ -1,4 +1,5 @@
 import {useRef, useState} from 'react';
+import Spinner from './Spinner.jsx';
 
 const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
     const [firstName, setFirstName] = useState('');
@@ -40,17 +41,19 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
         const file = event.target.files[0];
         if (!file) return;
 
-        setSelectedImage(URL.createObjectURL(file));
         setIsProcessing(true);
+        setTimeout(() =>  {
+            setSelectedImage(URL.createObjectURL(file));
+            setIsProcessing(true);
 
-        //hardocded values
-        setFirstName('Păsaran');
-        setLastName('Răzvan-Andrei');
-        setCnp('5030824350013');
-        setIdCardSeries('MH');
-        setIdCardNumber('654869');
-
-        setIsProcessing(false);
+            //hardocded values
+            setFirstName('Păsaran');
+            setLastName('Răzvan-Andrei');
+            setCnp('5030824350013');
+            setIdCardSeries('MH');
+            setIdCardNumber('654869');
+            setIsProcessing(false);
+        }, 3000);
     };
 
     return (
@@ -116,7 +119,7 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
                     </div>
                     <div>
                         <label className="block mb-1 text-sm font-bold text-blue-950" htmlFor="idCardNumber">
-                        Număr buletin
+                            Numar buletin
                         </label>
                         <input
                             type="text"
@@ -129,20 +132,24 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
                     </div>
                 </div>
 
-                <div className="upload-container">
-                    <button
-                        onClick={handleButtonClick}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    >
-                        {/* SVG Icon */}
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path d="M4 3a2 2 0 00-2 2v5h2V5h12v5h2V5a2 2 0 00-2-2H4z"></path>
-                            <path
-                                d="M4 13a2 2 0 00-2 2v3a2 2 0 002 2h12a2 2 0 002-2v-3a2 2 0 00-2-2H4zm5-3l3 3h-2v4H8v-4H6l3-3z"></path>
-                        </svg>
-                        <span>Upload ID Image</span>
-                    </button>
+                <div className="upload-container mt-4">
+                    { !isProcessing && !selectedImage &&
+                        <button
+                            onClick={handleButtonClick}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        >
+                            {/* SVG Icon */}
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 3a2 2 0 00-2 2v5h2V5h12v5h2V5a2 2 0 00-2-2H4z"></path>
+                                <path
+                                    d="M4 13a2 2 0 00-2 2v3a2 2 0 002 2h12a2 2 0 002-2v-3a2 2 0 00-2-2H4zm5-3l3 3h-2v4H8v-4H6l3-3z"></path>
+                            </svg>
+                            <span>Upload ID Image</span>
+                        </button>
+                    }
+
+                    { isProcessing && <Spinner /> }
 
                     {/* Hidden file input */}
                     <input
