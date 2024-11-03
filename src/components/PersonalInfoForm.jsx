@@ -44,8 +44,8 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
         setIsProcessing(true);
 
         //hardocded values
-        setFirstName('Pasaran');
-        setLastName('Razvan-Andrei');
+        setFirstName('Păsaran');
+        setLastName('Răzvan-Andrei');
         setCnp('5030824350013');
         setIdCardSeries('MH');
         setIdCardNumber('654869');
@@ -55,7 +55,7 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
 
     return (
         <div className="max-w-lg mx-auto p-4">
-            <h2 className="text-2xl font-bold mb-8 text-blue-900">Formular pentru informatii personale</h2>
+            <h2 className="text-2xl font-bold mb-8 text-blue-900">Formular pentru informații personale</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -116,7 +116,7 @@ const PersonalInfoForm = ({ handleOnPersonalInfoFormSubmited }) => {
                     </div>
                     <div>
                         <label className="block mb-1 text-sm font-bold text-blue-950" htmlFor="idCardNumber">
-                            Numar buletin
+                        Număr buletin
                         </label>
                         <input
                             type="text"
